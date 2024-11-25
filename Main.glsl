@@ -51,7 +51,8 @@ float map(in vec3 pos) {
         // Cada cubo rota independientemente sobre su propio eje
         vec3 rotatedPos = pos - positions[i];
         rotatedPos = rotate3D(angle, vec3(0.0, 0.0, 1.0)) * rotatedPos; // Rotación sobre el eje Z
-        d = min(d, sdBox(rotatedPos, cubeSize)); // Distancia mínima a la caja
+        
+        d = min(d, sdOctogonPrism(rotatedPos, 0.6, 0.2)); // Ejemplo de un prisma octogonal    
     }
 
     // Definir el tamaño y la posición del chasis (hexaedro)
@@ -62,7 +63,6 @@ float map(in vec3 pos) {
     d = min(d, sdBox(pos - chasisPos, chasisSize));
 
     // Ahora calculamos la distancia mínima a un prisma octogonal
-    d = min(d, sdOctogonPrism(pos - vec3(2.0, 0.0, 1.0), 0.5, 0.1)); // Ejemplo de un prisma octogonal
 
     return d;
 }
@@ -112,7 +112,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float light = clamp(dot(normal, normalize(vec3(0.5, 1.0, 0.75))), 0.0, 1.0);
 
         // Colorear el cubo y otros elementos
-        col = vec3(0.8, 0.2, 0.2) * light;  // Color rojo para el cubo
+        col = vec3(1) * light;  // Color rojo para el cubo
     }
 
     fragColor = vec4(col, 1.0);
