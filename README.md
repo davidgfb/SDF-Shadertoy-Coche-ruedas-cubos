@@ -8,6 +8,6 @@ else: w_Rueda = 3  # Velocidad angular alta si el torque es alto<br><br>
 
 if not tiene_Agarre: w_Rueda -= 1  # Reducción en la velocidad angular si no hay agarre<br><br>
 
-# Cálculo de la velocidad del coche<br>
+//Cálculo de la velocidad del coche<br>
 v_Coche = w_Rueda * r_Rueda  # Velocidad lineal del coche
 
