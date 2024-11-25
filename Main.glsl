@@ -4,6 +4,18 @@ float sdBox(vec3 p, vec3 b) {
     return length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
 }
 
+// Función para calcular la distancia a un prisma hexagonal
+float sdHexPrism(vec3 p, vec2 h) {
+    const vec3 k = vec3(-0.8660254, 0.5, 0.57735);  // Factor de corrección para el prisma hexagonal
+    p = abs(p);
+    p.xy -= 2.0 * min(dot(k.xy, p.xy), 0.0) * k.xy;
+    vec2 d = vec2(
+        length(p.xy - vec2(clamp(p.x, -k.z * h.x, k.z * h.x), h.x)) * sign(p.y - h.x),
+        p.z - h.y
+    );
+    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}
+
 // Función para rotar un vector en 3D (eje arbitrario)
 mat3 rotate3D(float angle, vec3 axis) {
     float c = cos(angle);
@@ -13,7 +25,7 @@ mat3 rotate3D(float angle, vec3 axis) {
                 axis.z * axis.x * (1.0 - c) - axis.y * s, axis.z * axis.y * (1.0 - c) + axis.x * s, c + axis.z * axis.z * (1.0 - c));
 }
 
-// Función principal para calcular la forma de la escena
+// Función para calcular la distancia de la escena
 float map(in vec3 pos) {
     // Velocidad angular del cubo
     float omega = 2.0; // Radianes por segundo
@@ -44,6 +56,11 @@ float map(in vec3 pos) {
 
     // Calculamos la distancia mínima al hexaedro (chasis)
     d = min(d, sdBox(pos - chasisPos, chasisSize));
+
+    // Definir el tamaño y la posición del prisma hexagonal
+    vec3 hexPos = vec3(0.0, 1.0, 0.0); // Posición del prisma hexagonal
+    vec2 hexSize = vec2(0.5, 1.0); // Tamaño del prisma hexagonal
+    d = min(d, sdHexPrism(pos - hexPos, hexSize));
 
     return d;
 }
@@ -92,8 +109,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         // Luz y sombra
         float light = clamp(dot(normal, normalize(vec3(0.5, 1.0, 0.75))), 0.0, 1.0);
 
-        // Colorear el cubo
+        // Colorear el cubo y el prisma hexagonal
         col = vec3(0.8, 0.2, 0.2) * light;  // Color rojo para el cubo
+        col = mix(col, vec3(0.2, 0.8, 0.2), light); // Mezclar color para el prisma hexagonal
     }
 
     fragColor = vec4(col, 1.0);
