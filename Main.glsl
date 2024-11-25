@@ -4,16 +4,20 @@ float sdBox(vec3 p, vec3 b) {
     return length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
 }
 
-// Función para calcular la distancia a un prisma hexagonal
-float sdHexPrism(vec3 p, vec2 h) {
-    const vec3 k = vec3(-0.8660254, 0.5, 0.57735);  // Factor de corrección para el prisma hexagonal
-    p = abs(p);
-    p.xy -= 2.0 * min(dot(k.xy, p.xy), 0.0) * k.xy;
-    vec2 d = vec2(
-        length(p.xy - vec2(clamp(p.x, -k.z * h.x, k.z * h.x), h.x)) * sign(p.y - h.x),
-        p.z - h.y
-    );
-    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+// Función para calcular la distancia a un prisma octogonal
+float sdOctogonPrism( in vec3 p, in float r, float h )
+{
+  const vec3 k = vec3(-0.9238795325,   // sqrt(2+sqrt(2))/2
+                       0.3826834323,   // sqrt(2-sqrt(2))/2
+                       0.4142135623 ); // sqrt(2)-1 
+  // Reflejos
+  p = abs(p);
+  p.xy -= 2.0*min(dot(vec2( k.x,k.y),p.xy),0.0)*vec2( k.x,k.y);
+  p.xy -= 2.0*min(dot(vec2(-k.x,k.y),p.xy),0.0)*vec2(-k.x,k.y);
+  // Lados del polígono
+  p.xy -= vec2(clamp(p.x, -k.z*r, k.z*r), r);
+  vec2 d = vec2( length(p.xy)*sign(p.y), p.z-h );
+  return min(max(d.x,d.y),0.0) + length(max(d,0.0));
 }
 
 // Función para rotar un vector en 3D (eje arbitrario)
@@ -25,42 +29,40 @@ mat3 rotate3D(float angle, vec3 axis) {
                 axis.z * axis.x * (1.0 - c) - axis.y * s, axis.z * axis.y * (1.0 - c) + axis.x * s, c + axis.z * axis.z * (1.0 - c));
 }
 
-// Función para calcular la distancia de la escena
+// Función principal para calcular la forma de la escena
 float map(in vec3 pos) {
-    // Velocidad angular del cubo
+    // Velocidad angular de rotación de los cubos
     float omega = 2.0; // Radianes por segundo
     float angle = iTime * omega; // Ángulo de rotación según el tiempo
 
-    // Posiciones de los cubos (en diferentes lugares)
+    // Posiciones de los cubos
     vec3 positions[4];
-    positions[0] = vec3(1.0, 0.0, 1.0);  // Primer cubo
-    positions[1] = vec3(1.0, 0.0, -1.0); // Segundo cubo
-    positions[2] = vec3(-1.0, 0.0, 1.0); // Tercer cubo
-    positions[3] = vec3(-1.0, 0.0, -1.0); // Cuarto cubo
+    positions[0] = vec3(1.0, 0.0, 1.0);
+    positions[1] = vec3(1.0, 0.0, -1.0);
+    positions[2] = vec3(-1.0, 0.0, 1.0);
+    positions[3] = vec3(-1.0, 0.0, -1.0);
 
-    // Tamaño del cubo
-    vec3 cubeSize = vec3(0.5);  // Dimensiones del cubo
+    // Tamaño de los cubos
+    vec3 cubeSize = vec3(0.5);
 
-    // Comprobamos si estamos dentro de uno de los cubos
+    // Calculamos la distancia mínima a cada cubo
     float d = 1e3;
     for (int i = 0; i < 4; i++) {
-        // Cada cubo gira independientemente sobre su propio eje
+        // Cada cubo rota independientemente sobre su propio eje
         vec3 rotatedPos = pos - positions[i];
-        rotatedPos = rotate3D(angle, vec3(0.0, 0.0, 1.0)) * rotatedPos; // Rotación sobre el eje Y
-        d = min(d, sdBox(rotatedPos, cubeSize)); // Distancia mínima a la caja
+        rotatedPos = rotate3D(angle, vec3(0.0, 0.0, 1.0)) * rotatedPos; // Rotación sobre el eje Z
+        
+        d = min(d, sdOctogonPrism(rotatedPos, 0.6, 0.2)); // Ejemplo de un prisma octogonal    
     }
 
-    // Definir el tamaño y la posición del chasis
-    vec3 chasisSize = vec3(2.0, 0.2, 1.0); // Tamaño del hexaedro (chasis)
-    vec3 chasisPos = vec3(0.0, 0.9, 0.0);  // Posición del chasis centrado
+    // Definir el tamaño y la posición del chasis (hexaedro)
+    vec3 chasisSize = vec3(2.0, 0.2, 1.0); // Tamaño del hexaedro
+    vec3 chasisPos = vec3(0.0, 0.9, 0.0);  // Posición del chasis
 
-    // Calculamos la distancia mínima al hexaedro (chasis)
+    // Calculamos la distancia mínima al hexaedro
     d = min(d, sdBox(pos - chasisPos, chasisSize));
 
-    // Definir el tamaño y la posición del prisma hexagonal
-    vec3 hexPos = vec3(0.0, 1.0, 0.0); // Posición del prisma hexagonal
-    vec2 hexSize = vec2(0.5, 1.0); // Tamaño del prisma hexagonal
-    d = min(d, sdHexPrism(pos - hexPos, hexSize));
+    // Ahora calculamos la distancia mínima a un prisma octogonal
 
     return d;
 }
@@ -109,9 +111,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         // Luz y sombra
         float light = clamp(dot(normal, normalize(vec3(0.5, 1.0, 0.75))), 0.0, 1.0);
 
-        // Colorear el cubo y el prisma hexagonal
-        col = vec3(0.8, 0.2, 0.2) * light;  // Color rojo para el cubo
-        col = mix(col, vec3(0.2, 0.8, 0.2), light); // Mezclar color para el prisma hexagonal
+        // Colorear el cubo y otros elementos
+        col = vec3(1) * light;  // Color rojo para el cubo
     }
 
     fragColor = vec4(col, 1.0);
