@@ -29,6 +29,10 @@ mat3 rotate3D(float angle, vec3 axis) {
                 axis.z * axis.x * (1.0 - c) - axis.y * s, axis.z * axis.y * (1.0 - c) + axis.x * s, c + axis.z * axis.z * (1.0 - c));
 }
 
+float alt_Supfcie(vec2 p) {
+    return sin(p.x) * sin(p.y);
+}
+
 // Función principal para calcular la forma de la escena
 float map(in vec3 pos) {
     // Velocidad angular de rotación de los cubos
@@ -49,8 +53,13 @@ float map(in vec3 pos) {
     float d = 1e3;
     for (int i = 0; i < 4; i++) {
         // Cada cubo rota independientemente sobre su propio eje
+        
+        positions[i].y -= alt_Supfcie(pos.xz); //ajusta la altura de las 
+        //ruedas al terreno 
+        
         vec3 rotatedPos = pos - positions[i];
-        rotatedPos = rotate3D(angle, vec3(0.0, 0.0, 1.0)) * rotatedPos; // Rotación sobre el eje Z
+        rotatedPos *= rotate3D(angle, vec3(0.0, 0.0, -1.0)); // Rotación sobre el eje Z
+        
         
         d = min(d, sdOctogonPrism(rotatedPos, 0.6, 0.2)); // Ejemplo de un prisma octogonal    
     }
@@ -58,15 +67,13 @@ float map(in vec3 pos) {
     // Definir el tamaño y la posición del chasis (hexaedro)
     vec3 chasisSize = vec3(2.0, 0.2, 1.0); // Tamaño del hexaedro
     vec3 chasisPos = vec3(0.0, 0.9, 0.0);  // Posición del chasis
-    
-    
-    
+      
     //esta considerando la superficie como x,z y la altura como y 
     //NO como z
 
     // Calculamos la distancia mínima al hexaedro
-    d = min(sin(pos.x) * sin(pos.z) + pos.y + 0.5,
-        min(d, sdBox(pos - chasisPos, chasisSize)));
+    d = min(alt_Supfcie(pos.xz) + pos.y + 0.5,
+        min(d, 1e3)); //sdBox(pos - chasisPos, chasisSize)));
 
     // Ahora calculamos la distancia mínima a un prisma octogonal
 
